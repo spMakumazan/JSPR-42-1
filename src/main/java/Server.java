@@ -51,8 +51,7 @@ public class Server {
                     return;
                 }
 
-                System.out.println("Query String: " + getQuery(request));
-                System.out.println("Query String Parameters: " + getQueryParams(request));
+                System.out.println(request);
 
                 var methodMap = handlers.get(request.getMethod());
                 if (methodMap == null) {
@@ -97,18 +96,5 @@ public class Server {
         if (methodMap.get(path) == null) {
             methodMap.put(path, handler);
         }
-    }
-
-    public String getQuery(Request request) {
-        String[] parts = request.getPath().split("\\?");
-        if (parts.length == 2) {
-            return parts[1];
-        } else {
-            return null;
-        }
-    }
-
-    public List<NameValuePair> getQueryParams(Request request) {
-        return URLEncodedUtils.parse(getQuery(request), StandardCharsets.UTF_8);
     }
 }

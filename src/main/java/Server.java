@@ -1,8 +1,12 @@
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URLEncodedUtils;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -47,6 +51,8 @@ public class Server {
                     return;
                 }
 
+                System.out.println(request);
+
                 var methodMap = handlers.get(request.getMethod());
                 if (methodMap == null) {
                     out.write((
@@ -59,7 +65,7 @@ public class Server {
                     return;
                 }
 
-                var handler = methodMap.get(request.getPath());
+                var handler = methodMap.get(request.getPath().split("\\?")[0]);
                 if (handler == null) {
                     out.write((
                             "HTTP/1.1 404 NOT FOUND\r\n" +
@@ -91,5 +97,4 @@ public class Server {
             methodMap.put(path, handler);
         }
     }
-
 }

@@ -19,14 +19,16 @@ public class Request {
     private String version;
     private List<String> headers;
     private String body;
+    private List<NameValuePair> postParams;
 
-    public Request(String method, String path, String version, List<String> headers, String body, List<NameValuePair> queryParams) {
+    public Request(String method, String path, String version, List<String> headers, String body, List<NameValuePair> queryParams, List<NameValuePair> postParams) {
         this.method = method;
         this.path = path;
         this.version = version;
         this.headers = headers;
         this.body = body;
         this.queryParams = queryParams;
+        this.postParams = postParams;
     }
 
     public static Request parse(BufferedInputStream in) throws IOException {
@@ -81,6 +83,7 @@ public class Request {
 
         // для GET тела нет
         String body = null;
+        List<NameValuePair> postParams = null;
         if (!method.equals(GET)) {
             in.skip(headersDelimiter.length);
             // вычитываем Content-Length, чтобы прочитать body
@@ -89,9 +92,11 @@ public class Request {
                 final var length = Integer.parseInt(contentLength.get());
                 final var bodyBytes = in.readNBytes(length);
                 body = new String(bodyBytes);
+                postParams = URLEncodedUtils.parse(body, StandardCharsets.UTF_8);
             }
         }
-        return new Request(requestLine[0], requestLine[1], requestLine[2], headers, body, queryParams);
+
+        return new Request(requestLine[0], requestLine[1], requestLine[2], headers, body, queryParams, postParams);
     }
 
     private static Optional<String> extractHeader(List<String> headers, String header) {
@@ -149,8 +154,19 @@ public class Request {
         return null;
     }
 
+    public List<NameValuePair> getPostParams() {
+        return postParams;
+    }
+
+    public List<NameValuePair> getPostParam(String name) {
+        return postParams.
+                stream().
+                filter(nameValuePair -> nameValuePair.getName().equals(name)).
+                toList();
+    }
+
     @Override
     public String toString(){
-        return method + "  " + path + "  " + version + "\n" + queryParams + "\n" + headers + "\n" + body + "\n";
+        return method + "  " + path + "  " + version + "\n" + queryParams + "\n" + headers + "\n" + body + "\n" + postParams + "\n";
     }
 }

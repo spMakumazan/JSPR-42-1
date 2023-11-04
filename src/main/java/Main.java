@@ -1,10 +1,12 @@
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class Main {
     public static void main(String[] args) {
         Server server = new Server(64);
-        server.addHandler("GET", "/messages", new Handler() {
+        server.addHandler("GET", "/", new Handler() {
             @Override
             public void handle(Request request, BufferedOutputStream responseStream) {
                 try (responseStream) {
@@ -23,7 +25,7 @@ public class Main {
                 }
             }
         });
-        server.addHandler("POST", "/messages", new Handler() {
+        server.addHandler("POST", "/", new Handler() {
             @Override
             public void handle(Request request, BufferedOutputStream responseStream) {
                 try (responseStream) {
@@ -36,6 +38,27 @@ public class Main {
                                     "\r\n"
                     ).getBytes());
                     responseStream.write(hello.getBytes());
+                    responseStream.flush();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        server.addHandler("GET", "/default-get.html", new Handler() {
+            @Override
+            public void handle(Request request, BufferedOutputStream responseStream) {
+                try (responseStream) {
+                    final var filePath = Path.of(".", "public", request.getPath());
+                    final var mimeType = Files.probeContentType(filePath);
+                    final var length = Files.size(filePath);
+                    responseStream.write((
+                            "HTTP/1.1 200 OK\r\n" +
+                                    "Content-Type: " + mimeType + "\r\n" +
+                                    "Content-Length: " + length + "\r\n" +
+                                    "Connection: close\r\n" +
+                                    "\r\n"
+                    ).getBytes());
+                    Files.copy(filePath, responseStream);
                     responseStream.flush();
                 } catch (IOException e) {
                     e.printStackTrace();

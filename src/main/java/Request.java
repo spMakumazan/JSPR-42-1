@@ -1,5 +1,13 @@
+import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.FileItemFactory;
+import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URLEncodedUtils;
+import javax.servlet.http.HttpServletRequest;
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -11,16 +19,23 @@ public class Request {
     final static List<String> allowedMethods = List.of(GET, POST);
     private String method;
     private String path;
+    private List<NameValuePair> queryParams;
     private String version;
     private List<String> headers;
     private String body;
+    private List<NameValuePair> postParams;
+    private List<FileItem> parts;
 
-    public Request(String method, String path, String version, List<String> headers, String body) {
+    public Request(String method, String path, String version, List<String> headers, String body,
+                   List<NameValuePair> queryParams, List<NameValuePair> postParams, List<FileItem> parts) {
         this.method = method;
         this.path = path;
         this.version = version;
         this.headers = headers;
         this.body = body;
+        this.queryParams = queryParams;
+        this.postParams = postParams;
+        this.parts = parts;
     }
 
     public static Request parse(BufferedInputStream in) throws IOException {
@@ -51,6 +66,12 @@ public class Request {
             return null;
         }
 
+        List<NameValuePair> queryParams = null;
+        final var pathParts = path.split("\\?");
+        if (pathParts.length == 2) {
+            queryParams = URLEncodedUtils.parse(pathParts[1], StandardCharsets.UTF_8);
+        }
+
         // ищем заголовки
         final var headersDelimiter = new byte[]{'\r', '\n', '\r', '\n'};
         final var headersStart = requestLineEnd + requestLineDelimiter.length;
@@ -69,6 +90,7 @@ public class Request {
 
         // для GET тела нет
         String body = null;
+        List<NameValuePair> postParams = null;
         if (!method.equals(GET)) {
             in.skip(headersDelimiter.length);
             // вычитываем Content-Length, чтобы прочитать body
@@ -77,9 +99,16 @@ public class Request {
                 final var length = Integer.parseInt(contentLength.get());
                 final var bodyBytes = in.readNBytes(length);
                 body = new String(bodyBytes);
+                postParams = URLEncodedUtils.parse(body, StandardCharsets.UTF_8);
             }
         }
-        return new Request(requestLine[0], requestLine[1], requestLine[2], headers, body);
+
+        HttpServletRequest servletRequest = ;
+        FileItemFactory factory = new DiskFileItemFactory();
+        ServletFileUpload upload = new ServletFileUpload(factory);
+        List<FileItem> parts = upload.parseRequest(servletRequest);
+
+        return new Request(requestLine[0], requestLine[1], requestLine[2], headers, body, queryParams, postParams, parts);
     }
 
     private static Optional<String> extractHeader(List<String> headers, String header) {
@@ -122,5 +151,48 @@ public class Request {
 
     public String getBody() {
         return body;
+    }
+
+    public List<NameValuePair> getQueryParams() {
+        return queryParams;
+    }
+
+    public String getQueryParam(String name) {
+        for (NameValuePair nameValuePair : queryParams) {
+            if (nameValuePair.getName().equals(name)) {
+                return nameValuePair.getValue();
+            }
+        }
+        return null;
+    }
+
+    public List<NameValuePair> getPostParams() {
+        return postParams;
+    }
+
+    public List<NameValuePair> getPostParam(String name) {
+        if (postParams != null) {
+            return postParams.
+                    stream().
+                    filter(nameValuePair -> nameValuePair.getName().equals(name)).
+                    toList();
+        }
+        return null;
+    }
+
+    public List<FileItem> getParts() {
+        return parts;
+    }
+
+    public List<FileItem> getPart(String name) {
+        if (parts != null) {
+
+        }
+        return null;
+    }
+
+    @Override
+    public String toString(){
+        return method + "  " + path + "  " + version + "\n" + queryParams + "\n" + headers + "\n" + body + "\n" + postParams + "\n";
     }
 }

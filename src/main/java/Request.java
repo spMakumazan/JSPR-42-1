@@ -1,6 +1,10 @@
+import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.FileItemFactory;
+import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
-
+import javax.servlet.http.HttpServletRequest;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -20,8 +24,10 @@ public class Request {
     private List<String> headers;
     private String body;
     private List<NameValuePair> postParams;
+    private List<FileItem> parts;
 
-    public Request(String method, String path, String version, List<String> headers, String body, List<NameValuePair> queryParams, List<NameValuePair> postParams) {
+    public Request(String method, String path, String version, List<String> headers, String body,
+                   List<NameValuePair> queryParams, List<NameValuePair> postParams, List<FileItem> parts) {
         this.method = method;
         this.path = path;
         this.version = version;
@@ -29,6 +35,7 @@ public class Request {
         this.body = body;
         this.queryParams = queryParams;
         this.postParams = postParams;
+        this.parts = parts;
     }
 
     public static Request parse(BufferedInputStream in) throws IOException {
@@ -96,7 +103,12 @@ public class Request {
             }
         }
 
-        return new Request(requestLine[0], requestLine[1], requestLine[2], headers, body, queryParams, postParams);
+        HttpServletRequest servletRequest = ;
+        FileItemFactory factory = new DiskFileItemFactory();
+        ServletFileUpload upload = new ServletFileUpload(factory);
+        List<FileItem> parts = upload.parseRequest(servletRequest);
+
+        return new Request(requestLine[0], requestLine[1], requestLine[2], headers, body, queryParams, postParams, parts);
     }
 
     private static Optional<String> extractHeader(List<String> headers, String header) {
@@ -159,10 +171,24 @@ public class Request {
     }
 
     public List<NameValuePair> getPostParam(String name) {
-        return postParams.
-                stream().
-                filter(nameValuePair -> nameValuePair.getName().equals(name)).
-                toList();
+        if (postParams != null) {
+            return postParams.
+                    stream().
+                    filter(nameValuePair -> nameValuePair.getName().equals(name)).
+                    toList();
+        }
+        return null;
+    }
+
+    public List<FileItem> getParts() {
+        return parts;
+    }
+
+    public List<FileItem> getPart(String name) {
+        if (parts != null) {
+
+        }
+        return null;
     }
 
     @Override
